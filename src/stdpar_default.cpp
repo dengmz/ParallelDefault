@@ -15,8 +15,6 @@
 #include <unistd.h>
 #include <fstream>
 #include <chrono>
-//#include <boost> working on it
-
 
 /* Matrix size */
 #define Nb 100
@@ -35,7 +33,7 @@
 #define sigma 0.025
 
 
-//main data structure, I set everything on public
+//main data structure, inspired by data structure of LULESH, adding details later
 
 class Domain{
 
