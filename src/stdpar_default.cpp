@@ -33,14 +33,23 @@
 #define sigma 0.025
 
 
-//main data structure, inspired by data structure of LULESH, adding details later
+//For the current version, NVC++ only automatically manage memory on the CPU heap,
+//so only heap memory can be moved between CPU and GPU automatically. 
+//Most of the changes were designed to get around this limitation.
+
+//In the official documentation, https://developer.nvidia.com/blog/accelerating-standard-c-with-gpus-using-stdpar/,
+//stdpar shows varius implementations in section "C++ Parallel Algorithms and CUDA Unified Memory",
+//the implementations do not work in our case, and here, inspired by LULESH design,
+//we modified the data structure to run sovereign defualt model with stdpar library and nvc++ compiler
 
 class Domain{
 
+	
     public:
-    std::vector<double> B; //Conditional probability matrix
-	std::vector<double> Y;
-    std::vector<double> P;
+    // we store all the data in a single class instance, and allow stdpar to allocate memory of the instance on GPU automatically
+    std::vector<double> B; //Bond matrix
+    std::vector<double> Y; //Endowment matrix
+    std::vector<double> P; //Conditional probability matrix
     std::vector<double> V; //Value
     std::vector<double> Price; //debt price
     std::vector<double> Vr; //Value of good standing
@@ -52,7 +61,7 @@ class Domain{
     std::vector<double> Price0; //old price
     std::vector<double> prob; //prob matrix
     
-    //constructor, store vectors
+    //constructor
     Domain(std::vector<double> B2, std::vector<double> Y2, std::vector<double> P2, std::vector<double> V2,std::vector<double> Price2, std::vector<double> Vr2, std::vector<double> Vd2, std::vector<double> decision2, std::vector<double> prob2){
         B = B2;
         Y = Y2;
@@ -65,7 +74,8 @@ class Domain{
         prob = prob2;
     }
 
-    //retrieve vector elements in stdpar executions
+    //simply calling B[index] in a lambda function will not yield the expected result, as stdpar only automatically allocates CPU heap memory,
+    //and capturing data objects by reference may contain non-obvious pointer dereferences
     double& B_ele(int index) {return B[index];}
     double& Y_ele(int index) {return Y[index];}
     double& P_ele(int index) {return P[index];}
@@ -99,7 +109,7 @@ class Domain{
 
     }
 
-    //saxpy operation for line 16
+    //saxpy operation for line 16, adding comments
     void saxpy_series(std::vector<int> vby, std::vector<int> vy){
         
         std::for_each(std::execution::par,
@@ -148,7 +158,7 @@ class Domain{
 
 
 //=============================================================
-//Main Calculation processes
+//Main Calculation processes, adding comments
 //line 7
 void default_value(Domain &domain, std::vector<int> vy){
     std::for_each(std::execution::par,
