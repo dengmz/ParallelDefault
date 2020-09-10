@@ -33,14 +33,14 @@
 #define sigma 0.025
 
 
-//For the current version, NVC++ only automatically manage memory on the CPU heap,
+//For the current version, nvc++ only automatically manage memory on the CPU heap,
 //so only heap memory can be moved between CPU and GPU automatically. 
-//Most of the changes were designed to get around this limitation.
+//We design changes to get around this limitation.
 
 //In the official documentation, https://developer.nvidia.com/blog/accelerating-standard-c-with-gpus-using-stdpar/,
-//stdpar shows varius implementations in section "C++ Parallel Algorithms and CUDA Unified Memory",
-//the implementations do not work in our case, and here, inspired by LULESH design,
-//we modified the data structure to run sovereign defualt model with stdpar library and nvc++ compiler
+//stdpar shows varius implementations in section "C++ Parallel Algorithms and CUDA Unified Memory".
+//Those implementations do not work in our case, and here, inspired by LULESH design,
+//we modified the data structure to run sovereign defualt model with the stdpar library and the nvc++ compiler
 
 class Domain{
 
