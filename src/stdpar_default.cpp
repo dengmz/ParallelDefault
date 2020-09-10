@@ -15,8 +15,6 @@
 #include <unistd.h>
 #include <fstream>
 #include <chrono>
-//#include <boost> working on it
-
 
 /* Matrix size */
 #define Nb 100
@@ -31,18 +29,28 @@
 #define phi 0.282
 #define tau 0.5
 #define delta 0.8
-#define rho 0.9 
+#define rho 0.9
 #define sigma 0.025
 
 
-//main data structure, I set everything on public
+//For the current version, nvc++ only automatically manage memory on the CPU heap,
+//so only heap memory can be moved between CPU and GPU automatically.
+//We design changes to get around this limitation.
+
+//In the official documentation, https://developer.nvidia.com/blog/accelerating-standard-c-with-gpus-using-stdpar/,
+//stdpar shows varius implementations in section "C++ Parallel Algorithms and CUDA Unified Memory".
+//Those implementations do not work in our case, and here, inspired by LULESH design,
+//we modified the data structure to run sovereign defualt model with the stdpar library and the nvc++ compiler
 
 class Domain{
 
+    
     public:
-    std::vector<double> B; //Conditional probability matrix
-	std::vector<double> Y;
-    std::vector<double> P;
+    
+    // we store all the data in a single class instance, and allow stdpar to allocate memory of the instance on GPU automatically
+    std::vector<double> B; //Bond matrix
+    std::vector<double> Y; //Endowment matrix
+    std::vector<double> P; //Conditional probability matrix
     std::vector<double> V; //Value
     std::vector<double> Price; //debt price
     std::vector<double> Vr; //Value of good standing
@@ -54,7 +62,7 @@ class Domain{
     std::vector<double> Price0; //old price
     std::vector<double> prob; //prob matrix
     
-    //constructor, store vectors
+    //constructor
     Domain(std::vector<double> B2, std::vector<double> Y2, std::vector<double> P2, std::vector<double> V2,std::vector<double> Price2, std::vector<double> Vr2, std::vector<double> Vd2, std::vector<double> decision2, std::vector<double> prob2){
         B = B2;
         Y = Y2;
@@ -63,11 +71,12 @@ class Domain{
         Price = Price2;
         Vr = Vr2;
         Vd = Vd2;
-        decision = decision2; 
+        decision = decision2;
         prob = prob2;
     }
 
-    //retrieve vector elements in stdpar executions
+    //simply calling B[index] in a lambda function will not yield the expected result, as stdpar only automatically allocates CPU heap memory,
+    //and capturing data objects by reference may contain non-obvious pointer dereferences
     double& B_ele(int index) {return B[index];}
     double& Y_ele(int index) {return Y[index];}
     double& P_ele(int index) {return P[index];}
@@ -101,7 +110,7 @@ class Domain{
 
     }
 
-    //saxpy operation for line 16
+    //saxpy operation for line 16, adding comments
     void saxpy_series(std::vector<int> vby, std::vector<int> vy){
         
         std::for_each(std::execution::par,
@@ -150,7 +159,7 @@ class Domain{
 
 
 //=============================================================
-//Main Calculation processes
+//Main Calculation processes, adding comments
 //line 7
 void default_value(Domain &domain, std::vector<int> vy){
     std::for_each(std::execution::par,
@@ -164,7 +173,7 @@ void default_value(Domain &domain, std::vector<int> vy){
                         sumdef += beta* domain.P_ele(iy + Ny*y) * (phi* domain.V0_ele(y) + (1.0-phi)*domain.Vd0_ele(y));
                     }
                     domain.Vd_ele(iy) = consdef + sumdef;
-                  }  
+                  }
     );
 }
 
@@ -265,14 +274,14 @@ void tauchen(std::vector<double>& P){
     //fill front and back
     for(int i=0; i < Ny; i++){
         P[i] = mynormcdf((Z[0]-rho*Z[i]+step/2)/sigma);
-	    P[i+Ny*(Ny-1)] = 1.0 - mynormcdf( (Z[Ny-1]-rho*Z[i]-step/2)/sigma);
+        P[i+Ny*(Ny-1)] = 1.0 - mynormcdf( (Z[Ny-1]-rho*Z[i]-step/2)/sigma);
     }
 
     //fill the middle
     for (int i = 0; i < Ny; ++i) {
-	    for (int iz = 1; iz < Ny-1; ++iz) {
+        for (int iz = 1; iz < Ny-1; ++iz) {
             P[i+Ny*iz] = mynormcdf( (Z[iz]-rho*Z[i]+step/2.0)/sigma)-mynormcdf( (Z[iz]-rho*Z[i]-step/2)/sigma  );
-	    }
+        }
     }
 };
 
@@ -284,22 +293,22 @@ int main(){
 
     std::vector<double> B(Nb);
     double minB = lbd ; // minp*kss;
-	double maxB = ubd ;  // maxp*kss;
-	double step = (maxB-minB)/double(Nb-1);
-	for (int i_b = 0; i_b < Nb; i_b++) {
-		B[i_b] = minB + step*double(i_b);
-	};
+    double maxB = ubd ;  // maxp*kss;
+    double step = (maxB-minB)/double(Nb-1);
+    for (int i_b = 0; i_b < Nb; i_b++) {
+        B[i_b] = minB + step*double(i_b);
+    };
 
     //Intitializing Endowment matrix
-	std::vector<double> Y(Ny);
+    std::vector<double> Y(Ny);
     double sigma_z = sqrt(sigma*sigma/(1.0-rho*rho));
     double step2 = 10*sigma_z/(Ny-1);
     for (int i_y = 0; i_y < Ny; i_y++) {
-		Y[i_y] = -5*sigma_z + step2*double(i_y);
-	};
+        Y[i_y] = -5*sigma_z + step2*double(i_y);
+    };
 
 
-	
+    
     std::vector<double> P(Ny*Ny,0.0);  //Conditional probability matrix
     std::vector<double> V(Ny*Nb,(1.0/((1.0-beta)*(1.0-alpha)))); //Value
     std::vector<double> Price(Ny*Nb, (1.0/(1.0+rstar))); //debt price
