@@ -46,6 +46,7 @@ class Domain{
 
 	
     public:
+	
     // we store all the data in a single class instance, and allow stdpar to allocate memory of the instance on GPU automatically
     std::vector<double> B; //Bond matrix
     std::vector<double> Y; //Endowment matrix
