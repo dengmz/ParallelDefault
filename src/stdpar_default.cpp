@@ -40,7 +40,7 @@
 //In the official documentation, https://developer.nvidia.com/blog/accelerating-standard-c-with-gpus-using-stdpar/,
 //stdpar shows varius implementations in section "C++ Parallel Algorithms and CUDA Unified Memory".
 //Those implementations do not work in our case, and here, inspired by LULESH design,
-//we modified the data structure to run sovereign defualt model with the stdpar library and the nvc++ compiler
+//we modified the data structure to run sovereign default model with the stdpar library and the nvc++ compiler
 
 class Domain{
 
