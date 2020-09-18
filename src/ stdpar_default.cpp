@@ -34,12 +34,17 @@
 
 
 //For the current version, nvc++ only automatically manage memory on the CPU heap,
+<<<<<<< HEAD:src/ stdpar_default.cpp
 //so only heap memory can be moved between CPU and GPU automatically.
+=======
+//so only heap memory can be moved between CPU and GPU automatically. 
+>>>>>>> e3dcb5d7f9801642871a43c4f58486ca46b9fb86:src/stdpar_default.cpp
 //We design changes to get around this limitation.
 
 //In the official documentation, https://developer.nvidia.com/blog/accelerating-standard-c-with-gpus-using-stdpar/,
 //stdpar shows varius implementations in section "C++ Parallel Algorithms and CUDA Unified Memory".
 //Those implementations do not work in our case, and here, inspired by LULESH design,
+<<<<<<< HEAD:src/ stdpar_default.cpp
 //we modified the data structure to run sovereign defualt model with the stdpar library and the nvc++ compiler
 
 class Domain{
@@ -47,6 +52,15 @@ class Domain{
     
     public:
     
+=======
+//we modified the data structure to run sovereign default model with the stdpar library and the nvc++ compiler
+
+class Domain{
+
+	
+    public:
+	
+>>>>>>> e3dcb5d7f9801642871a43c4f58486ca46b9fb86:src/stdpar_default.cpp
     // we store all the data in a single class instance, and allow stdpar to allocate memory of the instance on GPU automatically
     std::vector<double> B; //Bond matrix
     std::vector<double> Y; //Endowment matrix
