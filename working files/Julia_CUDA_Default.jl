@@ -67,7 +67,7 @@ end
 
 #line 8 Calculate Vr, still a double loop inside, tried to flatten out another loop
 #Is it Markov Chain
-function vr(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
+function vr_temp(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
 
     ib = (blockIdx().x-1)*blockDim().x + threadIdx().x
     iy = (blockIdx().y-1)*blockDim().y + threadIdx().y
@@ -91,6 +91,10 @@ function vr(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
     end
     return
 end
+
+blockcount = (ceil(Int,Nb/10),ceil(Int,Ny/10))
+@cuda threads=threadcount blocks=blockcount vr_temp(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
+
 
 
 #line 9-14 debt price update

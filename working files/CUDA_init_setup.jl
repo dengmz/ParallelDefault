@@ -28,8 +28,8 @@ function tauchen(ρ, σ, Ny, P)
 end
 
 #Setting parameters
-Ny = 100 #grid number of endowment
-Nb = 100 #grid number of bond
+Ny = 10 #grid number of endowment
+Nb = 10 #grid number of bond
 maxInd = Ny * Nb #total grid points
 rstar = 0.017 #r* used in price calculation
 α = 0.5 #α used in utility function
@@ -89,5 +89,10 @@ Price0 = CUDA.deepcopy(Price)
 prob = CUDA.zeros(Ny,Nb)
 decision = CUDA.ones(Ny,Nb)
 decision0 = CUDA.deepcopy(decision)
+C = CUDA.zeros(Ny,Nb,Nb)
+sumret = CUDA.zeros(Ny,Nb,Nb)
 
 threadcount = (32,32) #set up defualt thread numbers per block
+blockcount = (ceil(Int,Ny/10),ceil(Int,Ny/10))
+iy = 1
+ib = 1

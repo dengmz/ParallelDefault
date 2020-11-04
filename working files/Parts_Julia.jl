@@ -83,36 +83,81 @@ end
 
 vr_norm(Vr,V0,Y,B,Price0,P)
 
+function U(x)
+    if x >= 0
+        return x^(1-α) / (1-α) #Utility function7
+    end
+    return 0
+end
 
+for i = 1:Nb*Ny
+    ib = convert(Int64,ceil(i/Ny))
+    iy = convert(Int64,i - (ib-1)*Ny)
+    map(U,C[iy,ib,:])
+end
 
+vr_norm_C(Vr,V0,Y,B,Price0,P)
 
 function vr_norm_C(Vr,V0,Y,B,Price0,P)
+
+    C = zeros(Ny,Nb,Nb)
+    sumret = zeros(Ny,Nb,Nb)
+
     for i = 1:Nb*Ny
         ib = convert(Int64,ceil(i/Ny))
         iy = convert(Int64,i - (ib-1)*Ny)
         Max = -Inf
 
-        C = zeros(Ny,Nb,Nb)
-        sumret = zeros(Ny,Nb,Nb)
+
+
+                    #if c > 0 #How to do this line
+                        # If consumption positive, calculate value of return
+                        # In one matrix operation fro line 77 to 87
+                        # How to find max, to turn to matrix, procedures
+                        # calculate individually, calculate by matrix
+                        # compare if have GPU, write this way, without GPU with multithreading
 
         for b in 1:Nb
             C[iy,ib,:] = Price0[iy,:].*B
-
-            #if c > 0 #How to do this line
-                # If consumption positive, calculate value of return
-                # In one matrix operation fro line 77 to 87
-                # How to find max, to turn to matrix, procedures
-                # calculate individually, calculate by matrix
-                # compare if have GPU, write this way, without GPU with multithreading
-                sumret[iy,ib,:] = transpose(P[iy,:]'V0)
-                VR = map(U,C[iy,ib,:]) .+ β * sumret[iy,ib,:]
-                vr = reduce(max,VR)
-                Max = max(Max, vr)
+            # a for loop to go for every iy,ib,b
+            sumret[iy,ib,:] = transpose(P[iy,:]'V0)
+            # a for loop for every iy, ib, b
+            VR = map(U,C[iy,ib,:]) .+ β * sumret[iy,ib,:]
+            # a map option, cannot be done in kernel
+            # a saxpy function
+            vr = reduce(max,VR)
+            # a cublas max function
+            Max = max(Max, vr)\
+            # a CUDA max function
             #end
         end
         Vr[iy,ib] = Max
     end
 end
+
+function vr_norm_C(Vr,V0,Y,B,Price0,P)
+
+    C = zeros(Ny,Nb,Nb)
+    sumret = zeros(Ny,Nb,Nb)
+
+    for i = 1:Nb*Ny
+        ib = convert(Int64,ceil(i/Ny))
+        iy = convert(Int64,i - (ib-1)*Ny)
+        Max = -Inf
+
+        for b in 1:Nb
+            C[iy,ib,:] = Price0[iy,:].*B
+            sumret[iy,ib,:] = transpose(P[iy,:]'V0)
+            VR = map(U,C[iy,ib,:]) .+ β * sumret[iy,ib,:]
+            vr = reduce(max,VR)
+            Max = max(Max, vr)
+            #end
+        end
+        Vr[iy,ib] = Max
+    end
+end
+
+
 
 vr_norm_C(Vr,V0,Y,B,Price0,P)
 
@@ -167,7 +212,7 @@ function tauchen(ρ, σ, Ny, P)
 end
 
 
-U(x) = x^(1-α) / (1-α) #Utility function
+
 
 
 #Setting parameters

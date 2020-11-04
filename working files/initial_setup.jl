@@ -27,12 +27,16 @@ function tauchen(ρ, σ, Ny, P)
 end
 
 
-U(x) = x^(1-α) / (1-α) #Utility function
-
+function U(x)
+    if x >= 0
+        return x^(1-α) / (1-α) #Utility function7
+    end
+    return 0
+end
 
 #Setting parameters
-Ny = 50 #grid number of endowment
-Nb = 50 #grid number of bond
+Ny = 10 #grid number of endowment
+Nb = 10 #grid number of bond
 maxInd = Ny * Nb #total grid points
 rstar = 0.017 #r* used in price calculation
 α = 0.5 #α used in utility function
