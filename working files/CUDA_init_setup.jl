@@ -68,9 +68,17 @@ Vr = CUDA.zeros(Ny, Nb) #Value of good standing
 Vd = CUDA.zeros(Ny) #Value of default
 decision = CUDA.ones(Ny, Nb) #Decision matrix
 C = CUDA.zeros(Ny,Nb,Nb)
+VR = CUDA.zeros(Ny,Nb,Nb)
 sumret = CUDA.zeros(Ny,Nb,Nb)
 
-U(x) = x^(1-α) / (1-α) #Utility function, change this into a function
+#U(x) = x^(1-α) / (1-α) #Utility function, change this into a function
+function U(x)
+    if x >= 0
+        return x^(1-α) / (1-α) #Utility function7
+    end
+    return 0
+end
+U2(x) = U(x)
 
 #Initialize Conditional Probability matrix
 tauchen(ρ, σ, Ny, Pcpu)

@@ -59,16 +59,19 @@ function vr_sumret(Ny,Nb,Vr,V0,Y,B,Price0,P,C,sumret)
 end
 @cuda threads=threadcount blocks=blockcount vr_sumret(Ny,Nb,Vr,V0,Y,B,Price0,P,C,sumret)
 
-function vr_VR(Ny,Nb,Vr,V0,Y,B,Price0,P,C,sumret)
+function vr_VR(Ny,Nb,Vr,V0,Y,B,Price0,P,C,sumret,VR,β,U2)
     ib = (blockIdx().x-1)*blockDim().x + threadIdx().x
     iy = (blockIdx().y-1)*blockDim().y + threadIdx().y
 
     if (ib <= Nb && iy <= Ny)
         for b in 1:Nb
-            VR = map(U,C[iy,ib,:]) .+ β * sumret[iy,ib,:]
+            VR[iy,ib,b] = U2(C[iy,ib,b]) + β * sumret[iy,ib,b]
         end
     end
 end
+
+@cuda threads=threadcount blocks=blockcount vr_VR(Ny,Nb,Vr,V0,Y,B,Price0,P,C,sumret,VR,β,U2)
+
 
 function vr_Max(Ny,Nb,Vr,V0,Y,B,Price0,P,C,sumret)
     ib = (blockIdx().x-1)*blockDim().x + threadIdx().x

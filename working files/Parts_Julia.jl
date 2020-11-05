@@ -122,12 +122,13 @@ function vr_norm_C(Vr,V0,Y,B,Price0,P)
             # a for loop to go for every iy,ib,b
             sumret[iy,ib,:] = transpose(P[iy,:]'V0)
             # a for loop for every iy, ib, b
+
             VR = map(U,C[iy,ib,:]) .+ β * sumret[iy,ib,:]
             # a map option, cannot be done in kernel
             # a saxpy function
             vr = reduce(max,VR)
             # a cublas max function
-            Max = max(Max, vr)\
+            Max = max(Max, vr)
             # a CUDA max function
             #end
         end
