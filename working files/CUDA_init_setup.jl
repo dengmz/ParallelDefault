@@ -28,8 +28,8 @@ function tauchen(ρ, σ, Ny, P)
 end
 
 #Setting parameters
-Ny = 100 #grid number of endowment
-Nb = 80 #grid number of bond
+Ny = 200 #grid number of endowment
+Nb = 150 #grid number of bond
 maxInd = Ny * Nb #total grid points
 rstar = 0.017 #r* used in price calculation
 α = Float32(0.5) #α used in utility function

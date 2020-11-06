@@ -43,7 +43,8 @@ end
 #----
 
 #Calculate Cost Matrix C
-#19.3 μs
+#19.3 μs 100*80
+#88.2 μs 200*150
 function vr_C(Ny,Nb,Y,B,Price0,P,C)
     ib = (blockIdx().x-1)*blockDim().x + threadIdx().x
     iy = (blockIdx().y-1)*blockDim().y + threadIdx().y
@@ -57,7 +58,8 @@ end
 @benchmark @cuda threads=threadcount blocks=blockcount vr_C(Ny,Nb,Y,B,Price0,P,C)
 
 #map C -> U(C), then add β*sumret
-#21.299 μs
+#21.299 μs 100*80
+#113.3 μs 200*150
 function vr_C2(Ny,Nb,Vr,V0,Y,B,Price0,P,C,C2,sumret,α)
     ib = (blockIdx().x-1)*blockDim().x + threadIdx().x
     iy = (blockIdx().y-1)*blockDim().y + threadIdx().y
@@ -80,7 +82,8 @@ end
 #----
 #Calcuate sumret[iy,ib,b]
 #This is a four-loop here, works, but not elegant, anyway to use the ' operator as in the CPU version?
-#18.101 μs
+#18.101 μs 100*80
+#85.4 μs 200*150
 function vr_sumret(Ny,Nb,V0,P,sumret)
     ib = (blockIdx().x-1)*blockDim().x + threadIdx().x
     iy = (blockIdx().y-1)*blockDim().y + threadIdx().y
@@ -97,7 +100,8 @@ end
 @benchmark @cuda threads=threadcount blocks=blockcount vr_sumret(Ny,Nb,V0,P,sumret)
 
 #vr = U(c) + β * sumret
-#45.3 μs
+#45.3 μs 100*80
+#Slow μs 200*150
 @benchmark vr = C2 + β * sumret
 
 #Get max for [iy,ib,:]
@@ -106,7 +110,8 @@ end
 
 #---
 #write into decision function
-#12.301 μs
+#12.301 μs 100*80
+#15.3 μs 200*150
 function decide(Ny,Nb,Vd,Vr,V,decision)
 
     ib = (blockIdx().x-1)*blockDim().x + threadIdx().x
@@ -126,7 +131,8 @@ function decide(Ny,Nb,Vd,Vr,V,decision)
 end
 @benchmark @cuda threads=threadcount blocks=blockcount decide(Ny,Nb,Vd,Vr,V,decision)
 
-#12 μs
+#12 μs 100*80
+#15.4 μs 200*150
 function prob_calc(Ny,Nb,prob,P,decision)
     ib = (blockIdx().x-1)*blockDim().x + threadIdx().x
     iy = (blockIdx().y-1)*blockDim().y + threadIdx().y
@@ -141,6 +147,7 @@ function prob_calc(Ny,Nb,prob,P,decision)
 end
 @benchmark @cuda threads=threadcount blocks=blockcount prob_calc(Ny,Nb,prob,P,decision)
 
-#15.4 μs
+#15.4 μs 100*80
+#15.6 μs 200*150
 Price_calc(x, rstar) = (1-x) / (1+rstar)
 @benchmark Price = Price_calc.(prob, rstar)
