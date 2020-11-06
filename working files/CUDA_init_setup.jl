@@ -28,11 +28,11 @@ function tauchen(ρ, σ, Ny, P)
 end
 
 #Setting parameters
-Ny = 10 #grid number of endowment
-Nb = 10 #grid number of bond
+Ny = 100 #grid number of endowment
+Nb = 80 #grid number of bond
 maxInd = Ny * Nb #total grid points
 rstar = 0.017 #r* used in price calculation
-α = 0.5 #α used in utility function
+α = Float32(0.5) #α used in utility function
 
 #lower bound and upper bound for bond initialization
 lbd = -1
@@ -78,7 +78,10 @@ function U(x)
     end
     return 0
 end
-U2(x) = U(x)
+function U2(x)
+    return (x>0) * (x+0im)^(1-α) / (1-α)
+end
+#U2.(C)
 
 #Initialize Conditional Probability matrix
 tauchen(ρ, σ, Ny, Pcpu)
@@ -98,9 +101,12 @@ prob = CUDA.zeros(Ny,Nb)
 decision = CUDA.ones(Ny,Nb)
 decision0 = CUDA.deepcopy(decision)
 C = CUDA.zeros(Ny,Nb,Nb)
+#We set up C2, sumret and sumdef in device memory
 sumret = CUDA.zeros(Ny,Nb,Nb)
+sumdef = CUDA.zeros(Ny)
+C2 = CUDA.zeros(Ny,Nb,Nb)
 
-threadcount = (32,32) #set up defualt thread numbers per block
+threadcount = (16,16) #set up defualt thread numbers per block
 blockcount = (ceil(Int,Ny/10),ceil(Int,Ny/10))
 iy = 1
 ib = 1

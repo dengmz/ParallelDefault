@@ -98,7 +98,7 @@ for i = 1:Nb*Ny
     map(U,C[iy,ib,:])
 end
 
-#vr_norm_C(Vr,V0,Y,B,Price0,P)
+vr_norm_C(Vr,V0,Y,B,Price0,P)
 
 function vr_norm_C(Vr,V0,Y,B,Price0,P)
 
@@ -145,9 +145,9 @@ function vr_norm_C(Vr,V0,Y,B,Price0,P)
         ib = convert(Int64,ceil(i/Ny))
         iy = convert(Int64,i - (ib-1)*Ny)
         Max = -Inf
-        C[iy,ib,:] = Price0[iy,:].*B
 
         for b in 1:Nb
+            C[iy,ib,:] = Price0[iy,:].*B
             sumret[iy,ib,:] = transpose(P[iy,:]'V0)
             VR = map(U,C[iy,ib,:]) .+ β * sumret[iy,ib,:]
             vr = reduce(max,VR)
@@ -241,7 +241,7 @@ function main()
     minB = lbd
     maxB = ubd
     step = (maxB-minB) / (Nb-1)
-    B = Array(minB:step:maxB) #Bond
+    B = minB:step:maxB #Bond
 
     #Intitializing Endowment matrix
     #Y = zeros(Ny)
@@ -273,39 +273,3 @@ function main()
         prob = zeros(Ny,Nb)
         decision = ones(Ny,Nb)
         decision0 = deepcopy(decision)
-
-        @time def_init(sumdef,Y,α,τ)
-        @time def_add_norm(consdef,P,V0,Vd0)
-        vr_norm_C(Vr,V0,Y,B,Price0,P)
-        #A function for decide
-
-        #line 16
-        #update Error and value matrix at round end
-        err = maximum(abs.(V-V0))
-        PriceErr = maximum(abs.(Price-Price0))
-        VdErr = maximum(abs.(Vd-Vd0))
-        Vd = δ * Vd + (1-δ) * Vd0
-        Price = δ * Price + (1-δ) * Price0
-        V = δ * V + (1-δ) * V0
-        iter += 1
-        println("Errors of round $iter: Value error: $err, price error: $PriceErr, Vd error: $VdErr")
-
-        #Print final results
-        println("Total Round ",iter)
-
-        Vd = Vd[:,:]
-
-        println("Vr: ====================")
-        display(Vr)
-        println("Vd: ==================")
-        display(Vd)
-        println("Decision: ==================")
-        display(decision)
-        println("Price: ==================")
-        display(Price)
-
-        return Vr,Vd,decision,Price
-    end
-end
-
-main()

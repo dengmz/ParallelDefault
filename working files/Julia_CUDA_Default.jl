@@ -76,11 +76,11 @@ function vr_temp(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
 
         Max = -Inf
         for b in 1:Nb
-            c = CUDA.exp(Y[iy]) + B[ib] - Price0[iy,b]*B[b]
+            c = CUDA.exp(Y[iy]) + B[ib] - Price0[iy,b]*B[b] #C[iy,ib,b]
             if c > 0 #If consumption positive, calculate value of return
                 sumret = 0
                 for y in 1:Ny
-                    sumret += V0[y,b]*P[iy,y]
+                    sumret += V0[y,b]*P[iy,y] #sumret[iy,ib,b] = Sum y=1 to Ny V0[y,b] * P[iy,y]
                 end
 
                 vr = CUDA.pow(c,(1-α))/(1-α) + β * sumret

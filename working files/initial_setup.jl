@@ -36,7 +36,7 @@ end
 
 #Setting parameters
 Ny = 10 #grid number of endowment
-Nb = 10 #grid number of bond
+Nb = 8 #grid number of bond
 maxInd = Ny * Nb #total grid points
 rstar = 0.017 #r* used in price calculation
 α = 0.5 #α used in utility function

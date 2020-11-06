@@ -31,7 +31,7 @@ function vr_cuda_pt_1(Ny,Nb,Vr,V0,Y,B,Price0,P,C,sumret)
     end
 end
 #CUBLAS.cublasGemmEx
-CUBLAS.sax
+
 CUBLAS.dot(P[iy,:],V0)
 @cuda threads=threadcount blocks=blockcount vr_cuda_pt_1(Ny,Nb,Vr,V0,Y,B,Price0,P,C,sumret)
 
@@ -47,6 +47,25 @@ function vr_C(Ny,Nb,Vr,V0,Y,B,Price0,P,C,sumret)
 end
 @cuda threads=threadcount blocks=blockcount vr_C(Ny,Nb,Vr,V0,Y,B,Price0,P,C,sumret)
 
+function vr_C2(Ny,Nb,Vr,V0,Y,B,Price0,P,C,C2,sumret,α)
+    ib = (blockIdx().x-1)*blockDim().x + threadIdx().x
+    iy = (blockIdx().y-1)*blockDim().y + threadIdx().y
+
+    if (ib <= Nb && iy <= Ny)
+        for b in 1:Nb
+            #c= C[iy,ib,b]
+            if c >= 0
+                C2[iy,ib,b] = 1#CUDA.pow(c,(1-α)) / (1-α)
+                #vr = CUDA.pow(c,(1-α))/(1-α) + β * sumret
+            end
+        end
+    end
+end
+@cuda threads=threadcount blocks=blockcount vr_C2(Ny,Nb,Vr,V0,Y,B,Price0,P,C,C2,sumret,α)
+
+
+C2 = U2.(C)
+
 function vr_sumret(Ny,Nb,Vr,V0,Y,B,Price0,P,C,sumret)
     ib = (blockIdx().x-1)*blockDim().x + threadIdx().x
     iy = (blockIdx().y-1)*blockDim().y + threadIdx().y
@@ -58,6 +77,8 @@ function vr_sumret(Ny,Nb,Vr,V0,Y,B,Price0,P,C,sumret)
     end
 end
 @cuda threads=threadcount blocks=blockcount vr_sumret(Ny,Nb,Vr,V0,Y,B,Price0,P,C,sumret)
+
+
 
 function vr_VR(Ny,Nb,Vr,V0,Y,B,Price0,P,C,sumret,VR,β,U2)
     ib = (blockIdx().x-1)*blockDim().x + threadIdx().x
@@ -79,10 +100,11 @@ function vr_Max(Ny,Nb,Vr,V0,Y,B,Price0,P,C,sumret)
 
     if (ib <= Nb && iy <= Ny)
         for b in 1:Nb
-            VR = map(U,C[iy,ib,:]) .+ β * sumret[iy,ib,:]
+
         end
     end
 end
+
 
 
 function vr_cuda_pt_2(Nb,Ny,Vr,V0,Y,B,Price0,P,C,sumret)
@@ -102,6 +124,10 @@ function vr_cuda_pt_2(Nb,Ny,Vr,V0,Y,B,Price0,P,C,sumret)
     end
     return
 end
+
+@btime C2 = U2.(C)
+#Or we can do
+@btime VR = C2 + β * sumret
 
 blockcount = (ceil(Int,Nb/10),ceil(Int,Ny/10))
 @cuda threads=threadcount blocks=blockcount vr_cuda_pt_2(Nb,Ny,Vr,V0,Y,B,Price0,P,C,sumret)
