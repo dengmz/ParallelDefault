@@ -6,7 +6,7 @@ using Random, Distributions
 #-----
 #First a test on the best method to modify an array, avx loop, vmap and map
 
-function def_init(sumdef,Y,α,τ)
+function def_init_cpu(sumdef,Y,α,τ)
     for i in 1:Ny
         sumdef[i] = exp((1-τ)*Y[i])^(1-α)/(1-α)
     end
@@ -31,7 +31,7 @@ func_def_init(Y) = exp((1-τ)*Y)^(1-α)/(1-α)
 #------
 #Then second part of default value
 #Quick enough, still much space for improvements
-function def_add_norm(consdef,P,V0,Vd0)
+function def_add_norm_cpu(consdef,P,V0,Vd0)
     for iy in 1:Ny
         for y in 1:Ny
             consdef[iy] += β* P[iy,y]* (ϕ* V0[y,1] + (1-ϕ)* Vd0[y])
@@ -39,7 +39,7 @@ function def_add_norm(consdef,P,V0,Vd0)
     end
 end
 
-@benchmark def_add_norm(consdef,P,V0,Vd0)
+
 
 
 #line 7.2 adding second expected part to calcualte Vd[iy]
@@ -58,7 +58,7 @@ end
 #There are four loops, any way to divide the loops up
 #Should calculation of Cost be separated out, but Cost may be too large for an array
 
-function vr_norm(Vr,V0,Y,B,Price0,P)
+function vr_norm_cpu(Vr,V0,Y,B,Price0,P)
     for i = 1:Nb*Ny
         ib = convert(Int64,ceil(i/Ny))
         iy = convert(Int64,i - (ib-1)*Ny)
@@ -82,8 +82,8 @@ function vr_norm(Vr,V0,Y,B,Price0,P)
     end
 end
 
-vr_norm(Vr,V0,Y,B,Price0,P)
-
+#vr_norm(Vr,V0,Y,B,Price0,P)
+#=
 function U(x)
     if x >= 0
         #Utility function7
@@ -91,51 +91,8 @@ function U(x)
     end
     return 0
 end
-
-for i = 1:Nb*Ny
-    ib = convert(Int64,ceil(i/Ny))
-    iy = convert(Int64,i - (ib-1)*Ny)
-    map(U,C[iy,ib,:])
-end
-
-#vr_norm_C(Vr,V0,Y,B,Price0,P)
-
-function vr_norm_C(Vr,V0,Y,B,Price0,P)
-
-    C = zeros(Ny,Nb,Nb)
-    sumret = zeros(Ny,Nb,Nb)
-
-    for i = 1:Nb*Ny
-        ib = convert(Int64,ceil(i/Ny))
-        iy = convert(Int64,i - (ib-1)*Ny)
-        Max = -Inf
-
-        #if c > 0 #How to do this line
-        # If consumption positive, calculate value of return
-        # In one matrix operation fro line 77 to 87
-        # How to find max, to turn to matrix, procedures
-        # calculate individually, calculate by matrix
-        # compare if have GPU, write this way, without GPU with multithreading
-
-        for b in 1:Nb
-            C[iy,ib,:] = Price0[iy,:].*B
-            # a for loop to go for every iy,ib,b
-            sumret[iy,ib,:] = transpose(P[iy,:]'V0)
-            # a for loop for every iy, ib, b
-
-            VR = map(U,C[iy,ib,:]) .+ β * sumret[iy,ib,:]
-            # a map option, cannot be done in kernel
-            # a saxpy function
-            vr = reduce(max,VR)
-            # a cublas max function
-            Max = max(Max, vr)
-            # a CUDA max function
-            #end
-        end
-        Vr[iy,ib] = Max
-    end
-end
-
+=#
+#=
 function vr_norm_C(Vr,V0,Y,B,Price0,P)
 
     C = zeros(Ny,Nb,Nb)
@@ -157,8 +114,8 @@ function vr_norm_C(Vr,V0,Y,B,Price0,P)
         Vr[iy,ib] = Max
     end
 end
-
-vr_norm_C(Vr,V0,Y,B,Price0,P)
+=#
+#vr_norm_C(Vr,V0,Y,B,Price0,P)
 
 #line 8 Calculate Vr, still a double loop inside, tried to flatten out another loop
 function vr_cuda(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
@@ -186,6 +143,29 @@ function vr_cuda(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
     return
 end
 
+
+function Decide(Nb,Ny,Vd,Vr,V,decision,decision0,prob,P,Price,rstar)
+
+    for iy in 1:Ny
+        for ib in 1:Nb
+            if (Vd[iy] < Vr[iy,ib])
+                V[iy,ib] = Vr[iy,ib]
+                decision[iy,ib] = 0
+            else
+                V[iy,ib] = Vd[iy]
+                decision[iy,ib] = 1
+            end
+
+            for y in 1:Ny
+                prob[iy,ib] += P[iy,y] * decision[y,ib]
+            end
+
+            Price[iy,ib] = (1-prob[iy,ib]) / (1+rstar)
+        end
+    end
+end
+
+#=
 #----
 #Initial values set up
 

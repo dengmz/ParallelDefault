@@ -40,8 +40,8 @@ function TauchenCopy(P,Pcpu,Nb,Ny)
 end
 =#
 
-#line 7.1 Intitializing U((1-τ)iy) to each Vd[iy]
-function def_init(sumdef,τ,Y,α)
+#line 7.1 Intitializing U((1-τ)iy) to each Vd[iy] #BATCH UPDATE
+function def_init_old(sumdef,τ,Y,α)
     iy = threadIdx().x
     stride = blockDim().x
     for i = iy:stride:length(sumdef)
@@ -51,7 +51,7 @@ function def_init(sumdef,τ,Y,α)
 end
 
 #line 7.2 adding second expected part to calcualte Vd[iy]
-function def_add(matrix, P, β, V0, Vd0, ϕ, Ny)
+function def_add_old(matrix, P, β, V0, Vd0, ϕ, Ny)
     y = (blockIdx().x-1)*blockDim().x + threadIdx().x
     iy = (blockIdx().y-1)*blockDim().y + threadIdx().y
 
@@ -67,7 +67,8 @@ end
 
 #line 8 Calculate Vr, still a double loop inside, tried to flatten out another loop
 #Is it Markov Chain
-function vr_temp(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
+#=
+function vr_old(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
 
     ib = (blockIdx().x-1)*blockDim().x + threadIdx().x
     iy = (blockIdx().y-1)*blockDim().y + threadIdx().y
@@ -91,14 +92,35 @@ function vr_temp(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
     end
     return
 end
+=#
+function vr_old(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
 
-blockcount = (ceil(Int,Nb/10),ceil(Int,Ny/10))
-@cuda threads=threadcount blocks=blockcount vr_temp(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
+    ib = (blockIdx().x-1)*blockDim().x + threadIdx().x
+    iy = (blockIdx().y-1)*blockDim().y + threadIdx().y
 
+    if (ib <= Nb && iy <= Ny)
+
+        Max = -Inf
+        for b in 1:Nb
+            c = CUDA.exp(Y[iy]) + B[ib] - Price0[iy,b]*B[b]
+            if c > 0 #If consumption positive, calculate value of return
+                sumret = 0
+                for y in 1:Ny
+                    sumret += V0[y,b]*P[iy,y]
+                end
+
+                vr = CUDA.pow(c,(1-α))/(1-α) + β * sumret
+                Max = CUDA.max(Max, vr)
+            end
+        end
+        Vr[iy,ib] = Max
+    end
+    return
+end
 
 
 #line 9-14 debt price update
-function Decide(Nb,Ny,Vd,Vr,V,decision,decision0,prob,P,Price,rstar)
+function Decide_old(Nb,Ny,Vd,Vr,V,decision,decision0,prob,P,Price,rstar)
 
     ib = (blockIdx().x-1)*blockDim().x + threadIdx().x
     iy = (blockIdx().y-1)*blockDim().y + threadIdx().y
@@ -130,8 +152,8 @@ end
 function main()
 
     #Setting parameters
-    Ny = 100 #grid number of endowment
-    Nb = 100 #grid number of bond
+    Ny = 400 #grid number of endowment
+    Nb = 400 #grid number of bond
     maxInd = Ny * Nb #total grid points
     rstar = 0.017 #r* used in price calculation
     α = 0.5 #α used in utility function
@@ -176,8 +198,7 @@ function main()
 
     #Initialize Conditional Probability matrix
     tauchen(ρ, σ, Ny, Pcpu)
-    P = CUDA.zeros(Ny,Ny)
-    copyto!(P,Pcpu) ####Takes long time
+    P = CuArray(Pcpu)
 
 
     #=
@@ -209,12 +230,12 @@ function main()
 
         #line 7
         sumdef = CUDA.zeros(Ny)
-        @cuda threads=50 def_init(sumdef,τ,Y,α)
+        @cuda threads=50 def_init_old(sumdef,τ,Y,α)
 
         temp = CUDA.zeros(Ny,Ny)
 
         blockcount = (ceil(Int,Ny/10),ceil(Int,Ny/10))
-        @cuda threads=threadcount blocks=blockcount def_add(temp, P, β, V0, Vd0, ϕ, Ny)
+        @cuda threads=threadcount blocks=blockcount def_add_old(temp, P, β, V0, Vd0, ϕ, Ny)
 
         #Added this part for speed, may not work so well and untidy
         temp = sum(temp,dims=2)
@@ -228,12 +249,12 @@ function main()
         #line 8
 
         blockcount = (ceil(Int,Nb/10),ceil(Int,Ny/10))
-        @cuda threads=threadcount blocks=blockcount vr(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
+        @cuda threads=threadcount blocks=blockcount vr_old(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
 
         #line 9-14
 
         blockcount = (ceil(Int,Nb/10),ceil(Int,Ny/10))
-        @cuda threads=threadcount blocks=blockcount Decide(Nb,Ny,Vd,Vr,V,decision,decision0,prob,P,Price,rstar)
+        @cuda threads=threadcount blocks=blockcount Decide_old(Nb,Ny,Vd,Vr,V,decision,decision0,prob,P,Price,rstar)
 
         #line 16
         #update Error and value matrix at round end

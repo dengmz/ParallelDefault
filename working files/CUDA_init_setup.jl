@@ -28,8 +28,8 @@ function tauchen(ρ, σ, Ny, P)
 end
 
 #Setting parameters
-Ny = 200 #grid number of endowment
-Nb = 150 #grid number of bond
+Ny = 10 #grid number of endowment
+Nb = 10 #grid number of bond
 maxInd = Ny * Nb #total grid points
 rstar = 0.017 #r* used in price calculation
 α = Float32(0.5) #α used in utility function
@@ -70,6 +70,7 @@ decision = CUDA.ones(Ny, Nb) #Decision matrix
 C = CUDA.zeros(Ny,Nb,Nb)
 VR = CUDA.zeros(Ny,Nb,Nb)
 sumret = CUDA.zeros(Ny,Nb,Nb)
+global temp = CUDA.zeros(Ny,Ny)
 
 #U(x) = x^(1-α) / (1-α) #Utility function, change this into a function
 function U(x)
@@ -85,8 +86,7 @@ end
 
 #Initialize Conditional Probability matrix
 tauchen(ρ, σ, Ny, Pcpu)
-P = CUDA.zeros(Ny,Ny)
-copyto!(P,Pcpu) ####Takes long time
+P=CuArray(Pcpu) ####Takes long time
 
 
 err = 2000 #error
