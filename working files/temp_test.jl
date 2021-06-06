@@ -3,7 +3,7 @@
 #add grid_space element N to test on N*N endowment*bond matrix
 function bench_old_version()
 
-    Grid_space = [50] #[50 100 150 200 300 400]# 450 500 550 600]
+    Grid_space = [250] #[50 100 150 200 300 400]# 450 500 550 600]
     global BenchResultsMedian = zeros(10,length(Grid_space))
 
     global iter=1

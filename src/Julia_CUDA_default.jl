@@ -27,18 +27,6 @@ function tauchen(ρ, σ, Ny, P)
     end
 end
 
-#= May add later, improve copy speed
-function TauchenCopy(P,Pcpu,Nb,Ny)
-
-    ib = (blockIdx().x-1)*blockDim().x + threadIdx().x
-    iy = (blockIdx().y-1)*blockDim().y + threadIdx().y
-
-    if (ib <= Nb && iy <= Ny)
-        P[iy,ib] = Pcpu[iy,ib]
-    end
-    return
-end
-=#
 
 #line 7.1 Intitializing U((1-τ)iy) to each Vd[iy]
 function def_init(sumdef,τ,Y,α)
@@ -56,7 +44,7 @@ function def_add(matrix, P, β, V0, Vd0, ϕ, Ny)
     iy = (blockIdx().y-1)*blockDim().y + threadIdx().y
 
     #@cuprintln("iy=$iy,y=$y,stride1=$stride1,stride2=$stride2")
-    #Create 1 matrix and substract when an indice is calcualted, check if remaining matrix is
+    #Create 1 matrix and substract when an indice is calculated, check if remaining matrix is
     #@cuprintln("iy=$iy, y=$y")
 
     if (iy <= Ny && y <= Ny)
@@ -125,8 +113,8 @@ end
 function main()
 
     #Setting parameters
-    Ny = 21 #grid number of endowment
-    Nb = 5000 #grid number of bond
+    Ny = 7 #grid number of endowment
+    Nb = 10000 #grid number of bond
     maxInd = Ny * Nb #total grid points
     rstar = 0.017 #r* used in price calculation
     α = 0.5 #α used in utility function
@@ -176,17 +164,11 @@ function main()
     P = CUDA.zeros(Ny,Ny)
     #P = CUDA.CUarray(Pcpu)
     copyto!(P,Pcpu) #Takes long time
-    #=
-    threadcount = (30,30)
-    blockcount = (ceil(Int,Nb/10),ceil(Int,Ny/10))
-    @cuda threads=threadcount blocks=blockcount TauchenCopy(P,Pcpu,Nb,Ny)
-=#
-
 
     err = 2000 #error
     tol = 1e-6 #error toleration
     iter = 0
-    maxIter = 500 #Maximum interation
+    maxIter = 10 #Maximum interation
 
 #------
 #Based on Paper Part4, Sovereign meets C++
@@ -230,9 +212,9 @@ function main()
         #line 16
         #update Error and value matrix at round end
 
-        err = maximum(abs.(Array(V)-Array(V0)))
-        PriceErr = maximum(abs.(Array(Price)-Array(Price0)))
-        VdErr = maximum(abs.(Array(Vd)-Array(Vd0)))
+        err = maximum(abs.(V-V0))
+        PriceErr = maximum(abs.(Price-Price0))
+        VdErr = maximum(abs.(Vd-Vd0))
         Vd = δ * Vd + (1-δ) * Vd0
         Price = δ * Price + (1-δ) * Price0
         V = δ * V + (1-δ) * V0

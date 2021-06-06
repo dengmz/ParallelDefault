@@ -32,8 +32,8 @@ using namespace std;
 using namespace thrust;
 
 /* Matrix size */
-#define nb 300
-#define ny 21 
+#define nb 100
+#define ny 7 
 #define lbd -1
 #define ubd 0
 #define rrisk 2.0

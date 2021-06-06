@@ -30,8 +30,8 @@
 function main()
 
     #Setting parameters
-    Ny = 400 #grid number of endowment
-    Nb = 400 #grid number of bond
+    Ny = 7 #grid number of endowment
+    Nb = 10000 #grid number of bond
     maxInd = Ny * Nb #total grid points
     rstar = Float32(0.017) #r* used in price calculation
     α = Float32(0.5) #α used in utility function

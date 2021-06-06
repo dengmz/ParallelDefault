@@ -28,12 +28,12 @@ function tauchen(ρ, σ, Ny, P)
 end
 
 #Setting parameters
-Ny = 10 #grid number of endowment
-Nb = 10 #grid number of bond
+Ny = 7 #grid number of endowment
+Nb = 5000 #grid number of bond
 maxInd = Ny * Nb #total grid points
 rstar = 0.017 #r* used in price calculation
 α = Float32(0.5) #α used in utility function
-
+#μs
 #lower bound and upper bound for bond initialization
 lbd = -1
 ubd = 0
@@ -67,9 +67,11 @@ Price = CUDA.fill(1/(1+rstar), Ny, Nb) #Debt price
 Vr = CUDA.zeros(Ny, Nb) #Value of good standing
 Vd = CUDA.zeros(Ny) #Value of default
 decision = CUDA.ones(Ny, Nb) #Decision matrix
-C = CUDA.zeros(Ny,Nb,Nb)
-VR = CUDA.zeros(Ny,Nb,Nb)
-sumret = CUDA.zeros(Ny,Nb,Nb)
+#C = CUDA.zeros(Ny,Nb,Nb)
+#VR = CUDA.zeros(Ny,Nb,Nb)
+#sumret = CUDA.zeros(Ny,Nb,Nb)
+sumdef = CUDA.zeros(Ny)
+#C2 = CUDA.zeros(Ny,Nb,Nb)
 global temp = CUDA.zeros(Ny,Ny)
 
 #U(x) = x^(1-α) / (1-α) #Utility function, change this into a function
@@ -100,11 +102,10 @@ Price0 = CUDA.deepcopy(Price)
 prob = CUDA.zeros(Ny,Nb)
 decision = CUDA.ones(Ny,Nb)
 decision0 = CUDA.deepcopy(decision)
-C = CUDA.zeros(Ny,Nb,Nb)
-#We set up C2, sumret and sumdef in device memory
-sumret = CUDA.zeros(Ny,Nb,Nb)
+#C = CUDA.zeros(Ny,Nb,Nb)
+#sumret = CUDA.zeros(Ny,Nb,Nb)
 sumdef = CUDA.zeros(Ny)
-C2 = CUDA.zeros(Ny,Nb,Nb)
+#C2 = CUDA.zeros(Ny,Nb,Nb)
 
 threadcount = (16,16) #set up defualt thread numbers per block
 blockcount = (ceil(Int,Ny/10),ceil(Int,Ny/10))

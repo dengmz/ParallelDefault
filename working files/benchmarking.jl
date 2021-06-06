@@ -26,7 +26,10 @@ i = @time sumdef1(sumdef,Vd)
 #88.2 μs 200*200
 #90.95 μs 300*300
 #163 μs 500*500
-@benchmark @cuda threads=threadcount blocks=blockcount vr_C(Ny,Nb,Y,B,Price0,P,C)
+t1 = @benchmark @cuda threads=threadcount blocks=blockcount vr_C(Ny,Nb,$Y,$B,$Price0,$P,$C)
+v() = @cuda threads=threadcount blocks=blockcount vr_C(Ny,Nb,Y,B,Price0,P,C)
+t_vr_C = @benchmark v() gcsample = true seconds = 10
+t22 = @benchmark @cuda threads=threadcount blocks=blockcount vr_C(Ny,Nb,Y,B,Price0,P,C)
 @time @cuda threads=threadcount blocks=blockcount vr_C(Ny,Nb,Y,B,Price0,P,C)
 
 #map C -> U(C), then add β*sumret
@@ -73,7 +76,8 @@ i = @time sumret .*= β; vr = sumret; vr += C2
 #360 μs 200*150
 #480.9 μs 300*300
 #785.3 μs 500*500
-@benchmark reduce(max,vr,dims=3)
+red() = reduce(max,vr,dims=3)
+@benchmark red() seconds=10 gcsample=true
 @time reduce(max,vr,dims=3)
 
 #write into decision function
@@ -142,18 +146,15 @@ Price_calc(x, rstar) = (1-x) / (1+rstar)
 @benchmark Decide(Nb,Ny,Vd,Vr,V,decision,decision0,prob,P,Price,rstar)
 @time Decide(Nb,Ny,Vd,Vr,V,decision,decision0,prob,P,Price,rstar)
 
-@benchmark @cuda threads=50 def_init_old(sumdef,τ,Y,α)
+#Old_starts
+t0 = @benchmark @cuda threads=50 def_init_old(sumdef,τ,Y,α)
 @time @cuda threads=50 def_init_old(sumdef,τ,Y,α)
 
-t = @benchmark @cuda threads=threadcount blocks=blockcount def_add_old(temp, P, β, V0, Vd0, ϕ, Ny)
+t_def_add = @benchmark @cuda threads=threadcount blocks=blockcount def_add_old(temp, P, β, V0, Vd0, ϕ, Ny)
 @time @cuda threads=threadcount blocks=blockcount def_add_old(temp, P, β, V0, Vd0, ϕ, Ny)
-@benchmark temp2 = sum(temp,dims=2)
+t1 = @benchmark temp2 = sum(temp,dims=2)
 temp2 = sum(temp,dims=2)
-@benchmark sumdef2 = sumdef + temp2
-
-@benchmark for i in 1:length(Vd)
-    Vd[i] = sumdef[i]
-end
+t2 = @benchmark sumdef2 = sumdef + temp2
 
 @benchmark Vd = sumdef
 
@@ -162,8 +163,52 @@ end
 #88.2 μs 200*200
 #90.95 μs 300*300
 #163 μs 500*500
-@benchmark @cuda threads=threadcount blocks=blockcount vr_old(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
+t_vr = @benchmark @cuda threads=threadcount blocks=blockcount vr_old(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
 @time @cuda threads=threadcount blocks=blockcount vr_old(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
 
-@benchmark @cuda threads=threadcount blocks=blockcount Decide_old(Nb,Ny,Vd,Vr,V,decision,decision0,prob,P,Price,rstar)
-@time Decide_old(Nb,Ny,Vd,Vr,V,decision,decision0,prob,P,Price,rstar)
+t_decide = @benchmark @cuda threads=threadcount blocks=blockcount Decide_old(Nb,Ny,Vd,Vr,V,decision,decision0,prob,P,Price,rstar)
+#@time Decide_old(Nb,Ny,Vd,Vr,V,decision,decision0,prob,P,Price,rstar)
+
+counter=30
+t=[]
+for i in 1:counter
+    time = @timed @cuda threads=threadcount blocks=blockcount vr_old(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
+    push!(t, time[2])
+end
+med = median(t)
+
+t=[]
+for i in 1:counter
+    time = @timed @cuda threads=threadcount blocks=blockcount vr_sumret(Ny,Nb,V0,P,sumret)
+    push!(t, time[2])
+end
+
+Ny
+a = @benchmark @cuda threads=threadcount blocks=blockcount vr_old(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
+
+
+
+function T(V,V0,Price,Price0,Vd,Vd0)
+    err = maximum(abs.(V-V0))
+    PriceErr = maximum(abs.(Price-Price0))
+    VdErr = maximum(abs.(Vd-Vd0))
+    f(x,y) = δ * x + (1-δ) * y
+    Vd .= f.(Vd,Vd0)
+    Price .= f.(Price,Price0)
+    V .= f.(V,V0)
+end
+t = @time T(V,V0,Price,Price0,Vd,Vd0)
+
+#Saxpy
+function saxpy(X,Y,δ,Nb,Ny)
+
+    ib = (blockIdx().x-1)*blockDim().x + threadIdx().x
+    iy = (blockIdx().y-1)*blockDim().y + threadIdx().y
+
+    if (ib <= Nb && iy <= Ny)
+        X[iy,iy] = δ* X[ib,iy]# + (1-δ)* Y[ib,iy]
+    end
+    return
+end
+
+t = @benchmark @cuda threads=threadcount blocks=blockcount saxpy(Price,Price0,δ,Nb,Ny)

@@ -24,7 +24,7 @@ end
 
 function bench()
 
-    Grid_space = [100]
+    Grid_space = [300]
     #[50 100 150 200 300 400]# 450 500 550 600]
     global BenchResultsMedian = zeros(10,length(Grid_space))
     #sumdef1
@@ -39,7 +39,7 @@ function bench()
     global iter=1
 
     for i in Grid_space
-        println("round $iter")
+        println("round $iter, size $i")
         Ny = i
         Nb = i
         maxInd = Ny * Nb #total grid points

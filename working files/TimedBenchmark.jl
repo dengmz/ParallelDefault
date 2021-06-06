@@ -92,62 +92,80 @@ function bench()
         global vr
 
         tauchen(ρ, σ, Ny, Pcpu)
-        global P = CUDA.zeros(Ny,Ny)
-        copyto!(P,Pcpu) ####Takes long time
+        global P CuArray(Pcpu)
 
         global threadcount = (16,16) #set up defualt thread numbers per block
         global blockcount = (ceil(Int,Ny/10),ceil(Int,Ny/10))
+
+        elem = 1
 
         println("begin benchmark")
         @cuda threads=threadcount blocks=blockcount def_init(sumdef,τ,Y,α)
         display(sumdef)
         sumdef1(sumdef,Vd,V0)
         t = @benchmark sumdef1(sumdef,Vd,V0)
-        BenchResultsMedian[1,iter] = time(median(t))
-        BenchResultsMemory[1,iter] = memory(median(t))
+        BenchResultsMedian[elem,iter] = time(median(t))
+        BenchResultsMemory[elem,iter] = memory(median(t))
+        elem+=1
         t=0;
 
         t = @benchmark @cuda threads=threadcount blocks=blockcount vr_C(Ny,Nb,Y,B,Price0,P,C)
-        BenchResultsMedian[2,iter] = time(median(t))
-        BenchResultsMemory[2,iter] = memory(median(t))
+        BenchResultsMedian[elem,iter] = time(median(t))
+        BenchResultsMemory[elem,iter] = memory(median(t))
         @cuda threads=threadcount blocks=blockcount vr_C(Ny,Nb,Y,B,Price0,P,C)
+        elem+=1
         t=0;
+
         t = @benchmark @cuda threads=threadcount blocks=blockcount vr_C2(Ny,Nb,Vr,V0,Y,B,Price0,P,C,C2,sumret,α)
-        BenchResultsMedian[3,iter] = time(median(t))
-        BenchResultsMemory[3,iter] = memory(median(t))
+        BenchResultsMedian[elem,iter] = time(median(t))
+        BenchResultsMemory[elem,iter] = memory(median(t))
         @cuda threads=threadcount blocks=blockcount vr_C2(Ny,Nb,Vr,V0,Y,B,Price0,P,C,C2,sumret,α)
         t=0;
+        elem+=1
+
         t = @benchmark @cuda threads=threadcount blocks=blockcount vr_sumret(Ny,Nb,V0,P,sumret)
-        BenchResultsMedian[4,iter] = time(median(t))
-        BenchResultsMemory[4,iter] = memory(median(t))
+        BenchResultsMedian[elem,iter] = time(median(t))
+        BenchResultsMemory[elem,iter] = memory(median(t))
         @cuda threads=threadcount blocks=blockcount vr_sumret(Ny,Nb,V0,P,sumret)
         t=0;
+        elem+=1
+
         sumret0 = sumret;
         t = @benchmark sumret .*= β; vr = sumret; vr += C2
-        BenchResultsMedian[5,iter] = time(median(t))
-        BenchResultsMemory[5,iter] = memory(median(t))
+        BenchResultsMedian[elem,iter] = time(median(t))
+        BenchResultsMemory[elem,iter] = memory(median(t))
         sumret = sumret0; sumret .*= β; vr = sumret; vr += C2
         t=0;
+        elem+=1
+
         t = @benchmark Vr = reshape(reduce(max,vr,dims=3),(Ny,Nb))
-        BenchResultsMedian[6,iter] = time(median(t))
-        BenchResultsMemory[6,iter] = memory(median(t))
+        BenchResultsMedian[elem,iter] = time(median(t))
+        BenchResultsMemory[elem,iter] = memory(median(t))
         Vr = reshape(reduce(max,vr,dims=3),(Ny,Nb))
         t=0;
+        elem+=1
+
         t = @benchmark @cuda threads=threadcount blocks=blockcount decide(Ny,Nb,Vd,Vr,V,decision)
-        BenchResultsMedian[7,iter] = time(median(t))
-        BenchResultsMemory[7,iter] = memory(median(t))
+        BenchResultsMedian[elem,iter] = time(median(t))
+        BenchResultsMemory[elem,iter] = memory(median(t))
         @cuda threads=threadcount blocks=blockcount decide(Ny,Nb,Vd,Vr,V,decision)
         t=0;
+        elem+=1
+
         t = @benchmark @cuda threads=threadcount blocks=blockcount prob_calc(Ny,Nb,prob,P,decision)
-        BenchResultsMedian[8,iter] = time(median(t))
-        BenchResultsMemory[8,iter] = memory(median(t))
+        BenchResultsMedian[elem,iter] = time(median(t))
+        BenchResultsMemory[elem,iter] = memory(median(t))
         @cuda threads=threadcount blocks=blockcount prob_calc(Ny,Nb,prob,P,decision)
         t=0;
+        elem+=1
+
         t = @benchmark Price = Price_calc.(prob, rstar)
-        BenchResultsMedian[9,iter] = time(median(t))
-        BenchResultsMemory[9,iter] = memory(median(t))
+        BenchResultsMedian[elem,iter] = time(median(t))
+        BenchResultsMemory[elem,iter] = memory(median(t))
         Price = Price_calc.(prob, rstar)
         t=0;
+        elem+=1
+
         iter+=1
         println("iter $iter over")
         display(BenchResultsMedian)

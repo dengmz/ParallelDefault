@@ -176,3 +176,7 @@ Due to memory storage limits,
 
 
 [1] Unleash Julia
+
+
+
+Loop fusion reference: https://julialang.org/blog/2017/01/moredots/

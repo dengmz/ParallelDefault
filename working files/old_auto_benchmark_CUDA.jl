@@ -24,7 +24,7 @@ end
 
 function bench()
 
-    Grid_space = [600]
+    Grid_space = [150]
     #[50 100 150 200 300 400]# 450 500 550 600]
     global BenchResultsMedian = zeros(10,length(Grid_space))
     #sumdef1
@@ -96,103 +96,36 @@ function bench()
         #copyto!(P,Pcpu) ####Takes long time
         P = CuArray(Pcpu)
 
-        threadcount = (16,16) #set up defualt thread numbers per block
-        blockcount = (ceil(Int,Ny/10),ceil(Int,Ny/10))
+        global threadcount = (16,16) #set up defualt thread numbers per block
+        global blockcount = (ceil(Int,Ny/10),ceil(Int,Ny/10))
 
         println("begin benchmark")
-        global counter = 30
+        #global counter = 30
         elem = 1
-        @cuda threads=threadcount blocks=blockcount def_init(sumdef,τ,Y,α)
+        #@cuda threads=threadcount blocks=blockcount def_init(sumdef,τ,Y,α)
 
-        t=[]
-        for i in 1:counter
-            time = @timed sumdef1(sumdef,Vd,Vd0,V0,ϕ,β,P)
-            push!(t, time[2])
-        end
-        #display(t)
-        BenchResultsMedian[elem,iter] = median(t)
-        elem+=1
+        t0 = @benchmark @cuda threads=50 def_init_old($sumdef,$τ,$Y,$α)
+        BenchResultsMedian[elem,iter] = time(median(t0))
+        elem += 1
 
-        t=[]
-        for i in 1:counter
-            time = @timed @cuda threads=threadcount blocks=blockcount vr_C(Ny,Nb,Y,B,Price0,P,C)
-            push!(t, time[2])
-        end
-        #display(t)
-        BenchResultsMedian[elem,iter] = median(t)
-        elem+=1
+        t1 = @benchmark temp2 = sum(temp,dims=2)
+        global temp2 = sum($temp,dims=2)
+        t2 = @benchmark sumdef2 = sumdef + temp2
+        BenchResultsMedian[elem,iter] = time(median(t0)) + time(median(t1)) + time(median(t2))
+        elem += 1
 
-        t=[]
-        for i in 1:counter
-            time = @timed @cuda threads=threadcount blocks=blockcount vr_C2(Ny,Nb,Vr,V0,Y,B,Price0,P,C,C2,sumret,α)
-            push!(t, time[2])
-        end
-        #display(t)
-        BenchResultsMedian[elem,iter] = median(t)
-        elem+=1
+        t3 = @benchmark @cuda threads=threadcount blocks=blockcount def_add_old($temp, $P, $β, $V0, $Vd0, $ϕ, $Ny)
+        BenchResultsMedian[elem,iter] = time(median(t3)) + time(median(t0)) + time(median(t1)) + time(median(t2))
+        elem += 1
 
-        t=[]
-        for i in 1:counter
-            time = @timed @cuda threads=threadcount blocks=blockcount vr_sumret(Ny,Nb,V0,P,sumret)
-            push!(t, time[2])
-        end
-        #display(t)
-        BenchResultsMedian[elem,iter] = median(t)
-        elem+=1
+        t = @benchmark @cuda threads=threadcount blocks=blockcount vr_old($Nb,$Ny,$α,$β,$τ,$Vr,$V0,$Y,$B,$Price0,$P)
+        BenchResultsMedian[elem,iter] = time(median(t))
+        elem += 1
 
-        t=[]
-        for i in 1:counter
-            time = @timed sumret .*= β; vr = sumret; vr += C2
-            push!(t, time[2])
-        end
-        #display(t)
-        BenchResultsMedian[elem,iter] = median(t)
-        elem+=1
+        t = @benchmark @cuda threads=threadcount blocks=blockcount Decide_old($Nb,$Ny,$Vd,$Vr,$V,$decision,$decision0,$prob,$P,$Price,$rstar)
+        BenchResultsMedian[elem,iter] = time(median(t))
+        elem += 1
 
-        t=[]
-        for i in 1:counter
-            time = @timed Vr = reshape(reduce(max,vr,dims=3),(Ny,Nb))
-            push!(t, time[2])
-        end
-        #display(t)
-        BenchResultsMedian[elem,iter] = median(t)
-        elem+=1
-
-        t=[]
-        for i in 1:counter
-            time = @timed Vr = reshape(reduce(max,vr,dims=3),(Ny,Nb))
-            push!(t, time[2])
-        end
-        #display(t)
-        BenchResultsMedian[elem,iter] = median(t)
-        elem+=1
-
-        t=[]
-        for i in 1:counter
-            time = @timed @cuda threads=threadcount blocks=blockcount decide(Ny,Nb,Vd,Vr,V,decision)
-            push!(t, time[2])
-        end
-        #display(t)
-        BenchResultsMedian[elem,iter] = median(t)
-        elem+=1
-
-        t=[]
-        for i in 1:counter
-            time = @timed @cuda threads=threadcount blocks=blockcount prob_calc(Ny,Nb,prob,P,decision)
-            push!(t, time[2])
-        end
-        #display(t)
-        BenchResultsMedian[elem,iter] = median(t)
-        elem+=1
-
-        t=[]
-        for i in 1:counter
-            time = @timed Price = Price_calc.(prob, rstar)
-            push!(t, time[2])
-        end
-        #display(t)
-        BenchResultsMedian[elem,iter] = median(t)
-        elem+=1
         println("iter $iter over")
         iter+=1
         display(BenchResultsMedian)

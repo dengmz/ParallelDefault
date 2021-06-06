@@ -267,12 +267,13 @@ function vr_old(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
         Max = -Inf
         for b in 1:Nb
             c = Float32(CUDA.exp(Y[iy]) + B[ib] - Price0[iy,b]*B[b])
+            c = 1 #for benchmark purpose
             if c > 0 #If consumption positive, calculate value of return
                 sumret = 0
                 for y in 1:Ny
                     sumret += V0[y,b]*P[iy,y]
                 end
-                Max = CUDA.max(Max, CUDA.pow(c,(1-α))/(1-α) + β * sumret)
+                Max = CUDA.max(Max, c/(1-α) + β * sumret)
             end
         end
         Vr[iy,ib] = Max
