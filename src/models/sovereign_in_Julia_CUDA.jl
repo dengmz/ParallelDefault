@@ -242,11 +242,11 @@ function main()
 
 end
 
-#Store Value of good standing, Value of default, Decision and Price matrix
+
 @time VReturn, VDefault, Decision, Price = main()
 
 #-----
-#Storing values as CSV
+#Storing matrices as CSV
 #=
 
 using Parsers

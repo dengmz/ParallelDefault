@@ -1,8 +1,8 @@
-n = 400
-Ny = n #grid number of endowment
-Nb = n #grid number of bond
-sec = 120
-iter = 30
+#Modify the following parameters
+Ny = 7 #number of endowment grid points
+Nb = 1000 #number of bond grid points
+sec = 20 #benchmark time limit for Value-of-Repayment
+test_rounds = 10 #number of iterations inside the function for benchmarking
 
 using Random, Distributions
 using CUDA
@@ -10,6 +10,7 @@ using Base.Threads
 using BenchmarkTools
 #Initialization
 
+#----Initialize Kernels
 #line 7.1 Intitializing U((1-τ)iy) to each Vd[iy]
 function def_init(sumdef,τ,Y,α)
     iy = threadIdx().x
@@ -175,20 +176,12 @@ tauchen(ρ, σ, Ny, Pcpu)
 P = CUDA.zeros(Ny,Ny)
 #P = CUDA.CUarray(Pcpu)
 copyto!(P,Pcpu) #Takes long time
-#=
-threadcount = (32,32)
-blockcount = (ceil(Int,Nb/32),ceil(Int,Ny/32))
-@cuda threads=threadcount blocks=blockcount TauchenCopy(P,Pcpu,Nb,Ny)
-=#
+
 time_vd = 0
 time_vr = 0
 time_decide = 0
 time_update = 0
 time_init = 0
-
-err = 2000 #error
-tol = 1e-6 #error toleration
-iter = 0
 
 V0 = CUDA.deepcopy(V)
 Vd0 = CUDA.deepcopy(Vd)
@@ -197,12 +190,13 @@ prob = CUDA.zeros(Ny,Nb)
 decision = CUDA.ones(Ny,Nb)
 decision0 = CUDA.deepcopy(decision)
 threadcount = (32,32)
+blockcount = (ceil(Int,Ny/32),ceil(Int,Ny/32))
 
 
-#-------Test starts
+#----Test starts
+
+#Matrix to store benchmark results
 Times = zeros(4)
-
-test_rounds = 10
 
 function GPU_VD()
     for i in 1:test_rounds
@@ -211,7 +205,6 @@ function GPU_VD()
 
         temp = CUDA.zeros(Ny,Ny)
 
-        blockcount = (ceil(Int,Ny/10),ceil(Int,Ny/10))
         @cuda threads=threadcount blocks=blockcount def_add(temp, P, β, V0, Vd0, ϕ, Ny)
 
         temp = sum(temp,dims=2)
@@ -222,20 +215,19 @@ function GPU_VD()
     end
 end
 
-t_vd = @timed GPU_VD()
-Times[1] = t_vd[2]/test_rounds
+t_vd = @benchmark GPU_VD()
+Times[1] = median(t_vd).time/1e9/test_rounds
 println("VD Finished")
 
 
 function GPU_Decide()
     for i in 1:test_rounds
-        blockcount = (ceil(Int,Nb/10),ceil(Int,Ny/10))
         @cuda threads=threadcount blocks=blockcount Decide(Nb,Ny,Vd,Vr,V,decision,decision0,prob,P,Price,rstar)
     end
 end
 
-t_decide = @timed GPU_Decide()
-Times[3] = t_decide[2]/test_rounds
+t_decide = @benchmark GPU_Decide()
+Times[3] = median(t_decide).time/1e9/test_rounds
 println("Decide Finished")
 
 function GPU_Update()
@@ -244,16 +236,14 @@ function GPU_Update()
         PriceErr = maximum(abs.(Price-Price0))
         VdErr = maximum(abs.(Vd-Vd0))
 
-        blockcount = (ceil(Int,Ny/10),ceil(Int,Ny/10))
-
         @cuda threads=threadcount blocks=blockcount saxpy(Vd,Vd0,δ,1,Ny)
         @cuda threads=threadcount blocks=blockcount saxpy(Price,Price0,δ,Nb,Ny)
         @cuda threads=threadcount blocks=blockcount saxpy(V,V0,δ,Nb,Ny)
     end
 end
 
-t_update = @timed GPU_Update()
-Times[4] = t_update[2]/test_rounds
+t_update = @benchmark GPU_Update()
+Times[4] = median(t_update).time/1e9/test_rounds
 println("Update Half Finished")
 println("Nb=",Nb,"Ny=",Ny)
 println(Times)
@@ -261,15 +251,15 @@ println(Times)
 
 function GPU_VR()
     for i in 1:test_rounds
-        blockcount = (ceil(Int,Nb/10),ceil(Int,Ny/10))
         @cuda threads=threadcount blocks=blockcount vr(Nb,Ny,α,β,τ,Vr,V0,Y,B,Price0,P)
     end
 end
 
-t_vr = @timed GPU_VR()
-Times[2] = t_vr[2]/test_rounds
+t_vr = @benchmark GPU_VR() seconds = sec
+Times[2] = median(t_vr).time/1e9/test_rounds
+
 println("VR Finished")
-print(dump(t_vr))
+#println(dump(t_vr))
 println("Update Fully Finished")
-println("Nb=",Nb,"Ny=",Ny)
+println("Nb=",Nb,", Ny=",Ny)
 println(Times)
