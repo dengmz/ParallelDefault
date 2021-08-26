@@ -43,10 +43,6 @@ function def_add(matrix, P, β, V0, Vd0, ϕ, Ny)
     y = (blockIdx().x-1)*blockDim().x + threadIdx().x
     iy = (blockIdx().y-1)*blockDim().y + threadIdx().y
 
-    #@cuprintln("iy=$iy,y=$y,stride1=$stride1,stride2=$stride2")
-    #Create 1 matrix and substract when an indice is calculated, check if remaining matrix is
-    #@cuprintln("iy=$iy, y=$y")
-
     if (iy <= Ny && y <= Ny)
         matrix[iy,y] = β* P[iy,y]* (ϕ* V0[y,1] + (1-ϕ)* Vd0[y])
     end

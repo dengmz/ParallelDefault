@@ -1,6 +1,6 @@
 #Modify the following parameters
 Ny = 7 #number of endowment grid points
-Nb = 100 #number of bond grid points
+Nb = 20000 #number of bond grid points
 sec = 20 #benchmark time limit for Value-of-Repayment
 test_rounds = 10 #number of iterations inside the function for benchmarking
 
@@ -88,7 +88,7 @@ prob = zeros(Ny,Nb)
 #-------Test starts
 Times = zeros(4)
 
-#5
+#=5
 function CPU_VD()
     for i in 1:test_rounds
         for iy = 1:Ny
@@ -104,7 +104,7 @@ end
 t_vd = @benchmark CPU_VD()
 Times[1] = median(t_vd).time/1e9/test_rounds
 println("VD Finished")
-
+=#
 function CPU_Update(V,V0,Price,Price0,Vd,Vd0,δ)
     for i in 1:test_rounds
         err = maximum(abs.(V-V0))
@@ -151,7 +151,7 @@ println("Decide Finished")
 println("Update Half Finished")
 println("Nb=",Nb,"Ny=",Ny)
 println(Times)
-
+#=
 function CPU_VR()
     for i in 1:test_rounds
         for ib in 1:Nb
@@ -182,3 +182,4 @@ println("VR Finished")
 println("Update Fully Finished")
 println("Nb=",Nb,", Ny=",Ny)
 println(Times)
+=#
