@@ -154,9 +154,7 @@ function main()
 
     #Initialize Conditional Probability matrix
     tauchen(ρ, σ, Ny, Pcpu)
-    P = CUDA.zeros(Ny,Ny)
-    #P = CUDA.CUarray(Pcpu)
-    copyto!(P,Pcpu) #Takes long time
+    P = CuArray(Pcpu)
 
     err = 2000 #error
     tol = 1e-6 #error toleration
