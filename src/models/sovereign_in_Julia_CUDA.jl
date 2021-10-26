@@ -109,8 +109,8 @@ end
 function main()
 
     #Setting parameters
-    Ny = 500 #grid number of endowment
-    Nb = 500 #grid number of bond
+    Ny = 200 #grid number of endowment
+    Nb = 200 #grid number of bond
     maxInd = Ny * Nb #total grid points
     rstar = 0.017 #r* used in price calculation
     α = 0.5 #α used in utility function
@@ -132,15 +132,12 @@ function main()
 
 
     #Initializing Bond matrix
-    #B = zeros(Nb)
-    #B = CuArray{Float32}(undef,Nb)
     minB = lbd
     maxB = ubd
     step = (maxB-minB) / (Nb-1)
     B = CuArray(minB:step:maxB) #Bond
 
     #Intitializing Endowment matrix
-    #Y = zeros(Ny)
     σ_z = sqrt((σ^2)/(1-ρ^2))
     Step = 10*σ_z/(Ny-1)
     Y = CuArray(-5*σ_z:Step:5*σ_z) #Endowment
@@ -164,7 +161,7 @@ function main()
     err = 2000 #error
     tol = 1e-6 #error toleration
     iter = 0
-    maxIter = 10 #Maximum interation
+    maxIter = 300 #Maximum interation
 
 #------
 #Based on Paper Part4, Sovereign meets C++
@@ -178,11 +175,11 @@ function main()
         prob = CUDA.zeros(Ny,Nb)
         decision = CUDA.ones(Ny,Nb)
         decision0 = CUDA.deepcopy(decision)
-        threadcount = (30,30) #set up defualt thread numbers per block
+        threadcount = (32,32) #set up defualt thread numbers per block
 
         #line 7
         sumdef = CUDA.zeros(Ny)
-        @cuda threads=50 def_init(sumdef,τ,Y,α)
+        @cuda threads=64 def_init(sumdef,τ,Y,α)
 
         temp = CUDA.zeros(Ny,Ny)
 
@@ -190,10 +187,7 @@ function main()
         @cuda threads=threadcount blocks=blockcount def_add(temp, P, β, V0, Vd0, ϕ, Ny)
         #Added this part for speed, may not work so well and untidy
         temp = sum(temp,dims=2)
-        sumdef = sumdef + temp
-        for i in 1:length(Vd)
-            Vd[i] = sumdef[i]
-        end
+        Vd = sumdef + temp
 
         #line 8
 
